@@ -1,7 +1,34 @@
 const CEN_BIBLE20_HOME_URL = "https://centiger.github.io/CEN-Bible2.0/";
 
+function normalizeCenBibleRef(ref){
+  let cleanRef = (ref || "").toString().trim();
+  if(!cleanRef) return "";
+
+  // 장만 있는 표기는 첫 절로 보정합니다.
+  // 예: "창세기 12장" → "창세기 12:1"
+  cleanRef = cleanRef.replace(
+    /^(.+?)\s*(\d+)장\s*$/,
+    (_, book, chapter) => `${book.trim()} ${chapter}:1`
+  );
+
+  // 장 범위는 첫 장의 첫 절로 이동합니다.
+  // 예: "창세기 6~9장" → "창세기 6:1"
+  cleanRef = cleanRef.replace(
+    /^(.+?)\s*(\d+)\s*[~～\-–—]\s*\d+장\s*$/,
+    (_, book, chapter) => `${book.trim()} ${chapter}:1`
+  );
+
+  // "창세기 12"처럼 '장'이 생략된 경우도 보정합니다.
+  cleanRef = cleanRef.replace(
+    /^(.+?)\s+(\d+)\s*$/,
+    (_, book, chapter) => `${book.trim()} ${chapter}:1`
+  );
+
+  return cleanRef;
+}
+
 function getCenBibleRefUrl(ref){
-  const cleanRef = (ref || "").toString().trim();
+  const cleanRef = normalizeCenBibleRef(ref);
   return cleanRef
     ? `${CEN_BIBLE20_HOME_URL}?ref=${encodeURIComponent(cleanRef)}`
     : CEN_BIBLE20_HOME_URL;
