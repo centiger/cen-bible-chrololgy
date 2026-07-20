@@ -1,5 +1,48 @@
 const CEN_BIBLE20_HOME_URL = "https://centiger.github.io/CEN-Bible2.0/";
 
+function getCenBibleRefUrl(ref){
+  const value = (ref || "").toString().trim();
+  if(!value) return CEN_BIBLE20_HOME_URL;
+  return `${CEN_BIBLE20_HOME_URL}?ref=${encodeURIComponent(value)}&source=${encodeURIComponent("CEN-Chronology")}`;
+}
+
+function renderBibleRef(ref, className = ""){
+  const value = (ref || "").toString().trim();
+  if(!value) return "";
+  return `<button type="button" class="bible-ref-link ${className}" data-bible-ref="${value.replace(/"/g, "&quot;")}">${value}</button>`;
+}
+
+function installBibleRefStyles(){
+  if(document.getElementById("cenBibleRefStyles")) return;
+  const style = document.createElement("style");
+  style.id = "cenBibleRefStyles";
+  style.textContent = `
+    .bible-ref-link{
+      appearance:none;
+      -webkit-appearance:none;
+      border:0;
+      padding:0;
+      margin:0;
+      background:transparent;
+      color:inherit;
+      font:inherit;
+      font-weight:inherit;
+      line-height:inherit;
+      text-align:inherit;
+      text-decoration:underline;
+      text-decoration-style:dotted;
+      text-underline-offset:3px;
+      cursor:pointer;
+    }
+    .bible-ref-link:active{opacity:.62;}
+    .era-scripture .bible-ref-link,
+    .timeline-scripture .bible-ref-link,
+    .flow-ref .bible-ref-link,
+    .scripture-ref .bible-ref-link{color:inherit;}
+  `;
+  document.head.appendChild(style);
+}
+
 let currentPage = "home";
 let currentEraId = "era-origin";
 let currentEventId = "creation";
@@ -54,7 +97,7 @@ function renderEras(){
       <div class="era-head">
         <div class="era-title">${era.title}</div>
         <div class="era-year">${era.year}</div>
-        <div class="era-scripture">${era.scripture}</div>
+        <div class="era-scripture">${renderBibleRef(era.scripture)}</div>
       </div>
       <div class="era-summary">${era.summary}</div>
       <div class="event-chip-wrap">
@@ -149,7 +192,7 @@ function renderDetail(eventId){
       <h2>${data.title}</h2>
       <div class="detail-meta">
         <span class="pill">${data.year}</span>
-        <span class="pill light">${data.scripture}</span>
+        <span class="pill light">${renderBibleRef(data.scripture)}</span>
       </div>
     </section>
 
@@ -174,7 +217,7 @@ function renderDetail(eventId){
       <div class="section-card">
         <div class="timeline-year">${data.year}</div>
         <div class="timeline-era">${data.era}</div>
-        <div class="timeline-scripture">${data.scripture}</div>
+        <div class="timeline-scripture">${renderBibleRef(data.scripture)}</div>
       </div>
     </section>
 
@@ -203,7 +246,7 @@ function renderDetail(eventId){
             <div class="flow-badge flow-badge-text core-flow-title">${item.title}</div>
             <div class="flow-body core-flow-body">
               <div class="flow-text core-flow-desc">${item.desc}</div>
-              ${item.ref ? `<div class="flow-ref core-flow-ref">${item.ref}</div>` : ``}
+              ${item.ref ? `<div class="flow-ref core-flow-ref">${renderBibleRef(item.ref)}</div>` : ``}
             </div>
           </div>
         `;
@@ -216,7 +259,7 @@ function renderDetail(eventId){
       <div class="scripture-list">
         ${scriptureRefs.map(x=>`
           <div class="scripture-card">
-            <div class="scripture-ref">${x[0]}</div>
+            <div class="scripture-ref">${renderBibleRef(x[0])}</div>
             <div class="scripture-text">${x[1]}</div>
           </div>
         `).join("")}
@@ -404,7 +447,12 @@ function getMapImageSrc(eventId){
 function getHubCardsForEvent(eventId){
   if(typeof EVENT_HUB_LINKS === "undefined" || typeof EXPLORE_HUBS === "undefined") return [];
   const ids = EVENT_HUB_LINKS[eventId] || [];
-  return ids.map(id=>EXPLORE_HUBS[id]).filter(Boolean);
+  return ids
+    .map(id=>EXPLORE_HUBS[id])
+    .filter(hub=>{
+      if(!hub || !Array.isArray(hub.steps)) return false;
+      return hub.steps.some(step=>step && step.eventId && EVENTS[step.eventId]);
+    });
 }
 
 function renderHubEntryRows(eventId){
@@ -430,6 +478,10 @@ function renderHubEntryRows(eventId){
 function renderHubOverlay(hubId){
   const hub = (typeof EXPLORE_HUBS !== "undefined") ? EXPLORE_HUBS[hubId] : null;
   if(!hub) return;
+  const linkedSteps = Array.isArray(hub.steps)
+    ? hub.steps.filter(step=>step && step.eventId && EVENTS[step.eventId])
+    : [];
+  if(!linkedSteps.length) return;
   let overlay = document.getElementById("hubOverlay");
   if(!overlay){
     overlay = document.createElement("div");
@@ -448,7 +500,7 @@ function renderHubOverlay(hubId){
         <button class="hub-close" data-hub-close>×</button>
       </div>
       <div class="hub-flow">
-        ${hub.steps.map((step, idx)=>`
+        ${linkedSteps.map((step, idx)=>`
           <div class="hub-step ${step.type || "event"}">
             <div class="hub-step-marker">${step.label || idx+1}</div>
             <div class="hub-step-card">
@@ -457,9 +509,7 @@ function renderHubOverlay(hubId){
                 ${step.ref ? `<div class="hub-step-ref">${step.ref}</div>` : ``}
               </div>
               <div class="hub-step-desc">${step.desc || ""}</div>
-              ${step.eventId && EVENTS[step.eventId] ? `
-                <button class="hub-event-btn" data-hub-event="${step.eventId}">해당 사건 상세보기</button>
-              ` : `<div class="hub-concept-label">허브 전용 연결카드</div>`}
+              <button class="hub-event-btn" data-hub-event="${step.eventId}">해당 사건 상세보기</button>
             </div>
           </div>
         `).join("")}
@@ -540,7 +590,7 @@ function searchEvents(q){
       <div class="era-head">
         <div class="era-title">${era.title}</div>
         <div class="era-year">${era.year}</div>
-        <div class="era-scripture">${era.scripture}</div>
+        <div class="era-scripture">${renderBibleRef(era.scripture)}</div>
       </div>
       <div class="era-summary">${era.summary}</div>
       <div class="event-chip-wrap">
@@ -554,10 +604,19 @@ function searchEvents(q){
   `).join("") || `<div class="empty">검색 결과가 없습니다.</div>`;
 }
 function init(){
+  installBibleRefStyles();
   renderHome();
   renderEras();
 
   document.addEventListener("click", e=>{
+    const bibleRef = e.target.closest("[data-bible-ref]");
+    if(bibleRef){
+      e.preventDefault();
+      e.stopPropagation();
+      window.open(getCenBibleRefUrl(bibleRef.dataset.bibleRef), "_blank", "noopener");
+      return;
+    }
+
     if(e.target.closest("#cenBibleHomeBtn")){
       window.location.href = CEN_BIBLE20_HOME_URL;
       return;
