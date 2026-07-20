@@ -1,5 +1,19 @@
 const CEN_BIBLE20_HOME_URL = "https://centiger.github.io/CEN-Bible2.0/";
 
+function getCenBibleRefUrl(ref){
+  const cleanRef = (ref || "").toString().trim();
+  return cleanRef
+    ? `${CEN_BIBLE20_HOME_URL}?ref=${encodeURIComponent(cleanRef)}`
+    : CEN_BIBLE20_HOME_URL;
+}
+
+function renderBibleRef(ref, className = ""){
+  const cleanRef = (ref || "").toString().trim();
+  if(!cleanRef) return "";
+  return `<button type="button" class="bible-ref-link ${className}" data-bible-ref="${cleanRef}">${cleanRef}</button>`;
+}
+
+
 let currentPage = "home";
 let currentEraId = "era-origin";
 let currentEventId = "creation";
@@ -148,7 +162,7 @@ function renderEras(){
       <div class="era-head">
         <div class="era-title">${era.title}</div>
         <div class="era-year">${era.year}</div>
-        <div class="era-scripture">${era.scripture}</div>
+        <div class="era-scripture">${renderBibleRef(era.scripture, "era-scripture-link")}</div>
       </div>
       <div class="era-summary">${era.summary}</div>
       <div class="event-chip-wrap">
@@ -312,7 +326,7 @@ function renderDetail(eventId){
       <h2>${data.title}</h2>
       <div class="detail-meta">
         <span class="pill">${data.year}</span>
-        <span class="pill light">${data.scripture}</span>
+        <span class="pill light scripture-pill">${renderBibleRef(data.scripture, "pill-bible-ref")}</span>
       </div>
     </section>
 
@@ -337,7 +351,7 @@ function renderDetail(eventId){
       <div class="section-card">
         <div class="timeline-year">${data.year}</div>
         <div class="timeline-era">${data.era}</div>
-        <div class="timeline-scripture">${data.scripture}</div>
+        <div class="timeline-scripture">${renderBibleRef(data.scripture, "timeline-scripture-link")}</div>
       </div>
     </section>
 
@@ -366,7 +380,7 @@ function renderDetail(eventId){
             <div class="flow-badge flow-badge-text core-flow-title">${item.title}</div>
             <div class="flow-body core-flow-body">
               <div class="flow-text core-flow-desc">${item.desc}</div>
-              ${item.ref ? `<div class="flow-ref core-flow-ref">${item.ref}</div>` : ``}
+              ${item.ref ? `<div class="flow-ref core-flow-ref">${renderBibleRef(item.ref, "flow-bible-ref")}</div>` : ``}
             </div>
           </div>
         `;
@@ -379,7 +393,7 @@ function renderDetail(eventId){
       <div class="scripture-list">
         ${scriptureRefs.map(x=>`
           <div class="scripture-card">
-            <div class="scripture-ref">${x[0]}</div>
+            <div class="scripture-ref">${renderBibleRef(x[0], "related-bible-ref")}</div>
             <div class="scripture-text">${x[1]}</div>
           </div>
         `).join("")}
@@ -612,6 +626,12 @@ function renderHubEntryRows(eventId){
 function renderHubOverlay(hubId){
   const hub = (typeof EXPLORE_HUBS !== "undefined") ? EXPLORE_HUBS[hubId] : null;
   if(!hub) return;
+
+  // 실제 핵심사건과 연결된 카드만 표시합니다.
+  const linkedSteps = (hub.steps || []).filter(
+    step => step.eventId && EVENTS[step.eventId]
+  );
+
   let overlay = document.getElementById("hubOverlay");
   if(!overlay){
     overlay = document.createElement("div");
@@ -630,18 +650,16 @@ function renderHubOverlay(hubId){
         <button class="hub-close" data-hub-close>×</button>
       </div>
       <div class="hub-flow">
-        ${hub.steps.map((step, idx)=>`
+        ${linkedSteps.map((step, idx)=>`
           <div class="hub-step ${step.type || "event"}">
             <div class="hub-step-marker">${step.label || idx+1}</div>
             <div class="hub-step-card">
               <div class="hub-step-top">
                 <div class="hub-step-title">${step.title}</div>
-                ${step.ref ? `<div class="hub-step-ref">${step.ref}</div>` : ``}
+                ${step.ref ? `<div class="hub-step-ref">${renderBibleRef(step.ref, "hub-bible-ref")}</div>` : ``}
               </div>
               <div class="hub-step-desc">${step.desc || ""}</div>
-              ${step.eventId && EVENTS[step.eventId] ? `
-                <button class="hub-event-btn" data-hub-event="${step.eventId}">해당 사건 상세보기</button>
-              ` : `<div class="hub-concept-label">허브 전용 연결카드</div>`}
+              <button class="hub-event-btn" data-hub-event="${step.eventId}">해당 사건 상세보기</button>
             </div>
           </div>
         `).join("")}
@@ -722,7 +740,7 @@ function searchEvents(q){
       <div class="era-head">
         <div class="era-title">${era.title}</div>
         <div class="era-year">${era.year}</div>
-        <div class="era-scripture">${era.scripture}</div>
+        <div class="era-scripture">${renderBibleRef(era.scripture, "era-scripture-link")}</div>
       </div>
       <div class="era-summary">${era.summary}</div>
       <div class="event-chip-wrap">
@@ -838,7 +856,45 @@ function openHubMenu(){
     }
   });
 }
+function installBibleRefStyles(){
+  if(document.getElementById("bibleRefLinkStyles")) return;
+
+  const style = document.createElement("style");
+  style.id = "bibleRefLinkStyles";
+  style.textContent = `
+    .bible-ref-link{
+      appearance:none;
+      border:0;
+      background:transparent;
+      color:inherit;
+      font:inherit;
+      font-weight:inherit;
+      line-height:inherit;
+      padding:0;
+      margin:0;
+      cursor:pointer;
+      text-decoration:underline;
+      text-decoration-thickness:1.5px;
+      text-underline-offset:3px;
+    }
+    .bible-ref-link:active{opacity:.65}
+    .scripture-pill{display:inline-flex;align-items:center}
+    .scripture-pill .bible-ref-link{text-decoration:none}
+    .era-scripture .bible-ref-link,
+    .timeline-scripture .bible-ref-link,
+    .scripture-ref .bible-ref-link,
+    .flow-ref .bible-ref-link,
+    .hub-step-ref .bible-ref-link{
+      width:auto;
+      max-width:100%;
+      text-align:left;
+    }
+  `;
+  document.head.appendChild(style);
+}
+
 function init(){
+  installBibleRefStyles();
   renderHome();
   renderEras();
 
@@ -854,6 +910,12 @@ function init(){
       window.location.href = CEN_BIBLE20_HOME_URL;
       return;
     }
+    const bibleRef = e.target.closest("[data-bible-ref]");
+    if(bibleRef){
+      window.location.href = getCenBibleRefUrl(bibleRef.dataset.bibleRef);
+      return;
+    }
+
     const hubSelector = e.target.closest("[data-hub-selector]");
     if(hubSelector){
       openHubSelector(hubSelector.dataset.hubSelector);
