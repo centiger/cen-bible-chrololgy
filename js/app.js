@@ -35,7 +35,7 @@ function getCenBibleRefUrl(ref){
 }
 
 function renderBibleRef(ref, className = ""){
-  const cleanRef = (ref || "").toString().trim();
+  const cleanRef = normalizeCenBibleRef(ref);
   if(!cleanRef) return "";
   return `<button type="button" class="bible-ref-link ${className}" data-bible-ref="${cleanRef}">${cleanRef}</button>`;
 }
