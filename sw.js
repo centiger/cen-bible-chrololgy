@@ -1,5 +1,6 @@
+// 주제탐험 전체 단계 표시 캐시 갱신
 
-const CACHE_NAME = "cen-bible-chronology-v111-bible-ref-range-fix";
+const CACHE_NAME = "cen-bible-chronology-v111-theme-full-steps";
 const ASSETS = [
   "./",
   "./index.html",
