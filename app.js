@@ -1,13 +1,42 @@
 const CEN_BIBLE20_HOME_URL = "https://centiger.github.io/CEN-Bible2.0/";
 
+function normalizeCenBibleRef(ref){
+  let cleanRef = (ref || "").toString().trim();
+  if(!cleanRef) return "";
+
+  // 물결표·대시와 불필요한 공백을 통일합니다.
+  cleanRef = cleanRef
+    .replace(/[～–—]/g, "~")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  // 장에서 다른 장으로 이어지는 범위는 첫 장 1절로 이동합니다.
+  // 예: "창세기 1~11:1", "창세기 6~9장", "창세기 6장~9장" → 첫 장:1
+  const chapterRange = cleanRef.match(
+    /^(.+?)\s+(\d+)\s*장?\s*[~\-]\s*\d+(?::\d+)?\s*(?:장|절)?\s*$/
+  );
+  if(chapterRange){
+    return `${chapterRange[1].trim()} ${chapterRange[2]}:1`;
+  }
+
+  // 장만 있는 표기는 첫 절로 보정합니다.
+  // 예: "창세기 12장", "창세기 12" → "창세기 12:1"
+  const chapterOnly = cleanRef.match(/^(.+?)\s+(\d+)\s*장?\s*$/);
+  if(chapterOnly){
+    return `${chapterOnly[1].trim()} ${chapterOnly[2]}:1`;
+  }
+
+  return cleanRef;
+}
+
 function getCenBibleRefUrl(ref){
-  const value = (ref || "").toString().trim();
+  const value = normalizeCenBibleRef(ref);
   if(!value) return CEN_BIBLE20_HOME_URL;
   return `${CEN_BIBLE20_HOME_URL}?ref=${encodeURIComponent(value)}&source=${encodeURIComponent("CEN-Chronology")}`;
 }
 
 function renderBibleRef(ref, className = ""){
-  const value = (ref || "").toString().trim();
+  const value = normalizeCenBibleRef(ref);
   if(!value) return "";
   return `<button type="button" class="bible-ref-link ${className}" data-bible-ref="${value.replace(/"/g, "&quot;")}">${value}</button>`;
 }

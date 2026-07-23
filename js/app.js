@@ -4,25 +4,27 @@ function normalizeCenBibleRef(ref){
   let cleanRef = (ref || "").toString().trim();
   if(!cleanRef) return "";
 
+  // 물결표·대시와 불필요한 공백을 통일합니다.
+  cleanRef = cleanRef
+    .replace(/[～–—]/g, "~")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  // 장에서 다른 장으로 이어지는 범위는 첫 장 1절로 이동합니다.
+  // 예: "창세기 1~11:1", "창세기 6~9장", "창세기 6장~9장" → 첫 장:1
+  const chapterRange = cleanRef.match(
+    /^(.+?)\s+(\d+)\s*장?\s*[~\-]\s*\d+(?::\d+)?\s*(?:장|절)?\s*$/
+  );
+  if(chapterRange){
+    return `${chapterRange[1].trim()} ${chapterRange[2]}:1`;
+  }
+
   // 장만 있는 표기는 첫 절로 보정합니다.
-  // 예: "창세기 12장" → "창세기 12:1"
-  cleanRef = cleanRef.replace(
-    /^(.+?)\s*(\d+)장\s*$/,
-    (_, book, chapter) => `${book.trim()} ${chapter}:1`
-  );
-
-  // 장 범위는 첫 장의 첫 절로 이동합니다.
-  // 예: "창세기 6~9장" → "창세기 6:1"
-  cleanRef = cleanRef.replace(
-    /^(.+?)\s*(\d+)\s*[~～\-–—]\s*\d+장\s*$/,
-    (_, book, chapter) => `${book.trim()} ${chapter}:1`
-  );
-
-  // "창세기 12"처럼 '장'이 생략된 경우도 보정합니다.
-  cleanRef = cleanRef.replace(
-    /^(.+?)\s+(\d+)\s*$/,
-    (_, book, chapter) => `${book.trim()} ${chapter}:1`
-  );
+  // 예: "창세기 12장", "창세기 12" → "창세기 12:1"
+  const chapterOnly = cleanRef.match(/^(.+?)\s+(\d+)\s*장?\s*$/);
+  if(chapterOnly){
+    return `${chapterOnly[1].trim()} ${chapterOnly[2]}:1`;
+  }
 
   return cleanRef;
 }
